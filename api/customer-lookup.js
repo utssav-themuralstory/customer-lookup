@@ -5,6 +5,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Content-Type', 'text/plain'); // Return as plain text for Vapi
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -12,10 +13,8 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      error: 'Method not allowed',
-      method: req.method
-    });
+    res.status(405).end('Method not allowed');
+    return;
   }
 
   try {
@@ -33,7 +32,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Fallback: Standard direct body format (for testing tools like Postman)
+    // Fallback: Standard direct body format
     if (!searchValue && req.body) {
       searchValue = req.body.phone || req.body.email || req.body.input;
       console.log('Extracted from direct body:', searchValue);
@@ -41,14 +40,8 @@ export default async function handler(req, res) {
 
     if (!searchValue) {
       console.log('ERROR: No search value found');
-      return res.status(400).json({
-        error: 'Phone number or email is required',
-        received: {
-          hasMessage: !!req.body.message,
-          hasToolCalls: !!(req.body.message && req.body.message.toolCalls),
-          toolCallsLength: req.body.message && req.body.message.toolCalls ? req.body.message.toolCalls.length : 0
-        }
-      });
+      res.status(400).end('Phone number or email is required');
+      return;
     }
 
     console.log('Searching for:', searchValue);
@@ -74,10 +67,9 @@ export default async function handler(req, res) {
     const lines = csvText.split('\n').filter(line => line.trim());
     
     if (lines.length === 0) {
-      return res.status(200).json({
-        exists: false,
-        message: 'No data found in sheet'
-      });
+      console.log('No data in sheet');
+      res.status(200).end('CUSTOMER_NOT_FOUND');
+      return;
     }
 
     // Parse CSV
@@ -112,9 +104,11 @@ export default async function handler(req, res) {
     // Find column indices
     const phoneIndex = headers.findIndex(h => h.toLowerCase().includes('phone'));
     const emailIndex = headers.findIndex(h => h.toLowerCase().includes('email'));
+    const nameIndex = headers.findIndex(h => h.toLowerCase().includes('name'));
 
     console.log('Phone column index:', phoneIndex);
     console.log('Email column index:', emailIndex);
+    console.log('Name column index:', nameIndex);
 
     // Search for customer
     let foundCustomer = null;
@@ -154,44 +148,28 @@ export default async function handler(req, res) {
       }
     }
 
-    // Return result with proper headers
+    // Return result as simple text that Vapi can understand
     if (foundCustomer) {
-      console.log('Customer found:', foundCustomer.name || foundCustomer.Name);
+      const customerName = foundCustomer.Name || foundCustomer.name || 'Customer';
+      const customerEmail = foundCustomer.email || foundCustomer.Email || '';
       
-      const response = {
-        exists: true,
-        customer: foundCustomer,
-        searchValue: searchValue,
-        searchType: isEmail ? 'email' : 'phone'
-      };
+      console.log('Customer found:', customerName);
       
-      console.log('Returning response:', JSON.stringify(response));
+      // Return a simple success message that the assistant can parse
+      const result = `CUSTOMER_FOUND|${customerName}|${customerEmail}|${searchValue}`;
+      console.log('Returning result:', result);
       
-      res.setHeader('Content-Type', 'application/json');
-      res.status(200);
-      return res.end(JSON.stringify(response));
+      res.status(200).end(result);
+      return;
     } else {
       console.log('No customer found');
-      
-      const response = {
-        exists: false,
-        customer: null,
-        searchValue: searchValue,
-        message: "No customer found with provided phone number or email"
-      };
-      
-      console.log('Returning response:', JSON.stringify(response));
-      
-      res.setHeader('Content-Type', 'application/json');
-      res.status(200);
-      return res.end(JSON.stringify(response));
+      res.status(200).end('CUSTOMER_NOT_FOUND');
+      return;
     }
 
   } catch (error) {
     console.error('Error:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      details: error.message
-    });
+    res.status(500).end('SYSTEM_ERROR');
+    return;
   }
 }
