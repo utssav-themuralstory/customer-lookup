@@ -154,23 +154,37 @@ export default async function handler(req, res) {
       }
     }
 
-    // Return result
+    // Return result with proper headers
     if (foundCustomer) {
       console.log('Customer found:', foundCustomer.name || foundCustomer.Name);
-      return res.status(200).json({
+      
+      const response = {
         exists: true,
         customer: foundCustomer,
         searchValue: searchValue,
         searchType: isEmail ? 'email' : 'phone'
-      });
+      };
+      
+      console.log('Returning response:', JSON.stringify(response));
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200);
+      return res.end(JSON.stringify(response));
     } else {
       console.log('No customer found');
-      return res.status(200).json({
+      
+      const response = {
         exists: false,
         customer: null,
         searchValue: searchValue,
         message: "No customer found with provided phone number or email"
-      });
+      };
+      
+      console.log('Returning response:', JSON.stringify(response));
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200);
+      return res.end(JSON.stringify(response));
     }
 
   } catch (error) {
