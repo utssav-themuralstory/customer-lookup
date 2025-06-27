@@ -1,0 +1,6 @@
+{
+  "name": "customer-api",
+  "version": "1.0.0",
+  "description": "Customer lookup API for Vapi",
+  "main": "index.js"
+}
