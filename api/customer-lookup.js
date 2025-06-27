@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Content-Type', 'text/plain'); // Return as plain text for Vapi
+  res.setHeader('Content-Type', 'application/json'); // Change back to JSON
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -40,7 +40,10 @@ export default async function handler(req, res) {
 
     if (!searchValue) {
       console.log('ERROR: No search value found');
-      res.status(400).end('Phone number or email is required');
+      res.status(400).json({
+        status: "error",
+        message: "Phone number or email is required"
+      });
       return;
     }
 
@@ -68,7 +71,10 @@ export default async function handler(req, res) {
     
     if (lines.length === 0) {
       console.log('No data in sheet');
-      res.status(200).end('CUSTOMER_NOT_FOUND');
+      res.status(200).json({
+        status: "not_found",
+        message: "CUSTOMER_NOT_FOUND"
+      });
       return;
     }
 
@@ -155,21 +161,30 @@ export default async function handler(req, res) {
       
       console.log('Customer found:', customerName);
       
-      // Return a simple success message that the assistant can parse
-      const result = `CUSTOMER_FOUND|${customerName}|${customerEmail}|${searchValue}`;
-      console.log('Returning result:', result);
+      // Return a simple JSON response that Vapi can understand
+      const result = {
+        status: "success",
+        message: `CUSTOMER_FOUND|${customerName}|${customerEmail}|${searchValue}`
+      };
+      console.log('Returning result:', JSON.stringify(result));
       
-      res.status(200).end(result);
+      res.status(200).json(result);
       return;
     } else {
       console.log('No customer found');
-      res.status(200).end('CUSTOMER_NOT_FOUND');
+      res.status(200).json({
+        status: "not_found",
+        message: "CUSTOMER_NOT_FOUND"
+      });
       return;
     }
 
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).end('SYSTEM_ERROR');
+    res.status(500).json({
+      status: "error",
+      message: "SYSTEM_ERROR"
+    });
     return;
   }
 }
